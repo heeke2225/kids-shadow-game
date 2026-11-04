@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เกมอัจฉริยะภาพและเงา ผักและผลไม้</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Tahoma",sans-serif;background:linear-gradient(135deg,#fff2c9,#d8f5e7);color:#35445a;text-align:center}
+header{padding:24px 12px 10px}
+h1{color:#e65c4f;font-size:clamp(25px,5vw,40px);margin:5px}
+.subtitle{font-size:18px;color:#55715e}
+.panel{max-width:1050px;margin:12px auto;padding:18px;background:#ffffffdc;border-radius:25px;box-shadow:0 6px 18px #657a5730}
+.info{display:flex;justify-content:center;gap:15px;flex-wrap:wrap}
+.pill{background:#fff1b9;padding:10px 20px;border-radius:30px;font-size:18px;font-weight:bold}
+h2{color:#348b69;margin:15px 0}
+.boards{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.column{background:#f4fbff;padding:15px;border-radius:20px}
+.column h3{color:#e17b42}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.card{border:3px solid #dce9e8;border-radius:16px;background:white;padding:10px 3px;min-height:105px;cursor:pointer;transition:.2s;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.card:hover{transform:translateY(-3px);border-color:#74c9a2}
+.card.selected{border-color:#f4a623;background:#fff4d5}
+.card.correct{border-color:#42b978;background:#d9f8e7;opacity:.7;cursor:default}
+.pic{font-size:43px;line-height:1.35}
+.name{font-size:14px;font-weight:bold}
+.shadow{filter:brightness(0) saturate(100%);font-size:46px}
+.message{font-size:22px;font-weight:bold;min-height:38px;margin:15px 0;color:#348b69}
+button{border:0;border-radius:30px;padding:13px 25px;font-size:17px;font-weight:bold;cursor:pointer;margin:5px}
+.primary{background:#ffad42;color:#fff}
+.secondary{background:#73c99a;color:white}
+button:hover{filter:brightness(.95)}
+.footer{padding:15px;font-size:14px;color:#728276}
+@media(max-width:600px){.boards{grid-template-columns:1fr}.cards{grid-template-columns:repeat(3,1fr)}.card{min-height:95px}.pic,.shadow{font-size:38px}}
+</style>
+</head>
+<body>
+<header>
+  <div style="font-size:48px">🍎🥕🍉🍇</div>
+  <h1>เกมอัจฉริยะภาพและเงา</h1>
+  <div class="subtitle">ผักและผลไม้หรรษา 🌽🍓</div>
+  <div style="font-size:17px;margin-top:8px">มาช่วยกันจับคู่ภาพผักและผลไม้กับเงาให้ถูกต้องกันนะ!</div>
+</header>
+<main class="panel">
+  <div class="info">
+    <div class="pill">⭐ คะแนน: <span id="score">0</span></div>
+    <div class="pill">🎯 จับคู่แล้ว: <span id="done">0</span>/12</div>
+  </div>
+  <h2>🌈 เลือกภาพ แล้วหาเงาที่ตรงกัน</h2>
+  <div class="boards">
+    <section class="column">
+      <h3>🧺 ภาพผักและผลไม้</h3>
+      <div class="cards" id="pictures"></div>
+    </section>
+    <section class="column">
+      <h3>🌑 ภาพเงาปริศนา</h3>
+      <div class="cards" id="shadows"></div>
+    </section>
+  </div>
+  <div class="message" id="message" aria-live="polite">👆 เลือกภาพที่ชอบได้เลย!</div>
+  <button class="primary" onclick="resetGame()">🔄 เริ่มเกมใหม่</button>
+  <button class="secondary" onclick="say('เก่งมากค่ะ มาสนุกกับการจับคู่ผักและผลไม้กันนะ')">🔊 ฟังคำแนะนำ</button>
+</main>
+<div class="footer">🌼 เรียนรู้ผ่านการเล่น สนุกคิด สนุกสังเกต 🌼<br>สื่อการเรียนรู้สำหรับเด็กปฐมวัย</div>
+<script>
+const items=[
+  {id:1,name:"แอปเปิล",emoji:"🍎"},
+  {id:2,name:"กล้วย",emoji:"🍌"},
+  {id:3,name:"ส้ม",emoji:"🍊"},
+  {id:4,name:"แตงโม",emoji:"🍉"},
+  {id:5,name:"องุ่น",emoji:"🍇"},
+  {id:6,name:"สับปะรด",emoji:"🍍"},
+  {id:7,name:"แครอท",emoji:"🥕"},
+  {id:8,name:"ข้าวโพด",emoji:"🌽"},
+  {id:9,name:"มะเขือเทศ",emoji:"🍅"},
+  {id:10,name:"ฟักทอง",emoji:"🎃"},
+  {id:11,name:"บรอกโคลี",emoji:"🥦"},
+  {id:12,name:"มะเขือม่วง",emoji:"🍆"}
+];
+let selected=null;
+let matched=[];
+let score=0;
+let mistakes=0;
+function shuffle(array){
+  return [...array].sort(()=>Math.random()-.5);
+}
+function render(){
+  const pic=document.getElementById("pictures");
+  const sh=document.getElementById("shadows");
+  pic.innerHTML="";
+  sh.innerHTML="";
+  shuffle(items).forEach(item=>{
+    const el=document.createElement("div");
+    el.className="card";
+    el.dataset.id=item.id;
+    el.innerHTML=`<span class="pic">${item.emoji}</span><span class="name">${item.name}</span>`;
+    el.onclick=()=>choosePicture(item.id,el);
+    pic.appendChild(el);
+  });
+  shuffle(items).forEach(item=>{
+    const el=document.createElement("div");
+    el.className="card";
+    el.dataset.id=item.id;
+    el.innerHTML=`<span class="shadow">${item.emoji}</span><span class="name">เงาปริศนา</span>`;
+    el.onclick=()=>chooseShadow(item.id,el);
+    sh.appendChild(el);
+  });
+}
+function choosePicture(id,el){
+  if(matched.includes(id))return;
+  document.querySelectorAll("#pictures .card").forEach(c=>c.classList.remove("selected"));
+  selected=id;
+  el.classList.add("selected");
+  document.getElementById("message").textContent="👀 เก่งมาก! ลองหาเงาที่ตรงกันนะ";
+}
+function chooseShadow(id,el){
+  if(selected===null){
+    document.getElementById("message").textContent="💡 เลือกภาพสีทางซ้ายก่อนนะ";
+    return;
+  }
+  if(matched.includes(id))return;
+  if(selected===id){
+    matched.push(id);
+    score+=10;
+    document.getElementById("score").textContent=score;
+    document.getElementById("done").textContent=matched.length;
+    document.querySelectorAll(".card").forEach(c=>{
+      if(Number(c.dataset.id)===id)c.classList.add("correct");
+    });
+    const item=items.find(x=>x.id===id);
+    document.getElementById("message").textContent="🎉 เยี่ยมมาก! นี่คือ "+item.name+" ถูกต้องแล้ว!";
+    say("เก่งมากค่ะ "+item.name);
+    selected=null;
+    if(matched.length===items.length){
+      setTimeout(()=>{
+        document.getElementById("message").textContent="🏆 ยอดเยี่ยม! หนูจับคู่ครบทุกภาพแล้ว เก่งที่สุดเลย!";
+        say("ยินดีด้วยค่ะ หนูทำสำเร็จแล้ว");
+      },500);
+    }
+  }else{
+    mistakes++;
+    document.getElementById("message").textContent="🌻 ยังไม่ใช่นะ ลองสังเกตรูปร่างอีกครั้ง";
+    say("ลองอีกครั้งนะคะ");
+  }
+  document.querySelectorAll("#pictures .card").forEach(c=>c.classList.remove("selected"));
+}
+function say(text){
+  if("speechSynthesis" in window){
+    speechSynthesis.cancel();
+    const msg=new SpeechSynthesisUtterance(text);
+    msg.lang="th-TH";
+    msg.rate=.85;
+    speechSynthesis.speak(msg);
+  }
+}
+function resetGame(){
+  selected=null;
+  matched=[];
+  score=0;
+  mistakes=0;
+  document.getElementById("score").textContent=0;
+  document.getElementById("done").textContent=0;
+  document.getElementById("message").textContent="👆 เริ่มเล่นกันเลย! เลือกภาพที่ชอบนะ";
+  render();
+}
+render();
+</script>
+</body>
+</html>
